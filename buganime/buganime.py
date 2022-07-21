@@ -14,6 +14,8 @@ from typing import Iterator, cast
 
 import cv2
 import win32event
+from youtube_search import YoutubeSearch
+import youtube_dl
 
 
 OUTPUT_DIR = os.getenv('BUGANIME_OUTPUT_DIR', '')
@@ -23,7 +25,8 @@ TREX_PWD = os.getenv('TREX_PWD', '')
 ANIME4K_ARGS = ['-q', '-w', '-C', 'avc1', '-v']
 ANIME4K_PATH = os.path.join(os.path.dirname(__file__), 'externals', 'Anime4KCPP_CLI', 'Anime4KCPP_CLI.exe')
 
-MUTEX_NAME = 'anime4kconvert'
+UPSCALE_MUTEX_NAME = 'anime4kconvert'
+THEME_MUTEX_NAME = 'theme_mutex_%s'
 
 
 def http_get(url: str) -> str:
@@ -106,28 +109,46 @@ def process_file(input_path: str) -> None:
 
     logging.info('Converting %s', input_path)
 
+    # Put in the correct path
     parsed = parse_filename(input_path=input_path)
     if isinstance(parsed, TVShow):
-        output_path = os.path.join(OUTPUT_DIR, 'TV Shows', parsed.name, f'Season {parsed.season}',
-                                   f'{parsed.name} S{parsed.season:02d}E{parsed.episode:02d}.mkv')
+        output_path = os.path.join(OUTPUT_DIR, 'TV Shows', parsed.name, f'{parsed.name} S{parsed.season:02d}E{parsed.episode:02d}.mkv')
     else:
-        output_path = os.path.join(OUTPUT_DIR, 'Movies', parsed.name, f'{parsed.name}.mkv')
+        output_path = os.path.join(OUTPUT_DIR, 'Movies', f'{parsed.name}.mkv')
     if not os.path.isdir(os.path.dirname(output_path)):
         os.makedirs(os.path.dirname(output_path))
 
+    # Upscale if necessary
     try:
         if cv2.VideoCapture(input_path).get(cv2.CAP_PROP_FRAME_HEIGHT) >= 2000:  # pylint: disable=no-member
             shutil.copyfile(input_path, output_path)
-            return
-
-        with lock_mutex(name=MUTEX_NAME):
-            with trex_pause(addr=TREX_ADDR, pwd=TREX_PWD):
-                logging.info('Running Anime4KCPP')
-                proc = subprocess.run([ANIME4K_PATH, *ANIME4K_ARGS, '-i', input_path, '-o', output_path],
-                                      check=False, cwd=tempfile.gettempdir(), capture_output=True, encoding='utf-8')
-                logging.info('Anime4K CPP for %s returned %d and wrote: %s%s', input_path, proc.returncode, proc.stdout, proc.stderr)
+        else:
+            with lock_mutex(name=UPSCALE_MUTEX_NAME):
+                with trex_pause(addr=TREX_ADDR, pwd=TREX_PWD):
+                    logging.info('Running Anime4KCPP')
+                    proc = subprocess.run([ANIME4K_PATH, *ANIME4K_ARGS, '-i', input_path, '-o', output_path],
+                                          check=False, cwd=tempfile.gettempdir(), capture_output=True, encoding='utf-8')
+                    logging.info('Anime4K CPP for %s returned %d and wrote: %s%s', input_path, proc.returncode, proc.stdout, proc.stderr)
     except Exception:
         logging.exception('Failed to convert %s', input_path)
+
+    # Downlowd theme if necessary (retry 5 times)
+    with lock_mutex(name=(THEME_MUTEX_NAME % re.sub(r'[^a-zA-Z]', '', parsed.name))):
+        for _ in range(5):
+            theme_path = os.path.join(os.path.dirname(output_path), 'theme.%(ext)s')
+            if not os.path.isfile(theme_path % {'ext': 'mp3'}):
+                try:
+                    suffix = json.loads(YoutubeSearch(f'{parsed.name} opening tv size', max_results=1).to_json())['videos'][0]['url_suffix']
+                    logging.info('Downloading youtube opening %s', suffix)
+                    with youtube_dl.YoutubeDL({'outtmpl': theme_path, 'format': 'bestaudio/best', 'postprocessors': [{
+                                                'key': 'FFmpegExtractAudio',
+                                                'preferredcodec': 'mp3',
+                                                'preferredquality': '192',
+                                                }]}) as ydl:
+                        ydl.download([f'https://www.youtube.com{suffix}'])
+                    break
+                except Exception:
+                    logging.exception('Failed to find theme for %s', input_path)
 
 
 def process_path(input_path: str) -> None:
