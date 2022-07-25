@@ -84,14 +84,14 @@ def parse_filename(input_path: str) -> TVShow | Movie:
     input_path = input_path.replace('_', ' ').strip()
 
     # Remove extension and directories
-    input_name = os.path.basename(input_path).strip()
+    input_name = os.path.basename(input_path).strip(' -')
 
     # Special/OVAs are season 0
-    if match := re.match(r'^(?P<name>.+?)[ -]+(?:Special|SP|OVA|OAV|Picture Drama)[ -]+E?(?P<episode>\d{1,3})$', input_name):
+    if match := re.match(r'^(?P<name>.+?)[ -]+(?:Special|SP|OVA|OAV|Picture Drama)[ -]+E?(?P<episode>\d{1,3})(?:v\d+)?$', input_name):
         return TVShow(name=match.group('name'), season=0, episode=int(match.group('episode')))
 
     # Other standalone TV Shows
-    if match := re.match(r'^(?P<name>.+?)[ -]+(?:S(?:eason ?)?(?P<season>\d{1,2})[ -]*)?E?(?P<episode>\d{1,3})$', input_name):
+    if match := re.match(r'^(?P<name>.+?)[ -]+(?:S(?:eason ?)?(?P<season>\d{1,2})[ -]*)?E?(?P<episode>\d{1,3})(?:v\d+)?$', input_name):
         return TVShow(name=match.group('name'), season=int(match.group('season') or '1'), episode=int(match.group('episode')))
 
     # Structured TV Shows

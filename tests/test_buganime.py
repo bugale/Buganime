@@ -25,6 +25,18 @@ NAME_CONVERSIONS = [
     (r'C:\[Judas] Kaguya-Sama Wa Kokurasetai - S03E07.mkv',
      TVShow(name='Kaguya-Sama Wa Kokurasetai', season=3, episode=7)),
 
+    (r'C:\[SubsPlease] Rikei ga Koi ni Ochita no de Shoumei shitemita - 08v2 (1080p) [77514EF3].mkv',
+     TVShow(name='Rikei ga Koi ni Ochita no de Shoumei shitemita', season=1, episode=8)),
+
+    (r'C:\[SubsPlease] Rikei ga Koi ni Ochita no de Shoumei shitemita S2 - 08v2 (1080p) [77514EF3].mkv',
+     TVShow(name='Rikei ga Koi ni Ochita no de Shoumei shitemita', season=2, episode=8)),
+
+    (r'C:\Kaguya-sama - Love is War - S00E01 - (S2O1 OVA).mkv',
+     TVShow(name='Kaguya-sama - Love is War', season=0, episode=1)),
+
+    (r'C:\Kaguya-sama - Love is War - S01E06.mkv',
+     TVShow(name='Kaguya-sama - Love is War', season=1, episode=6)),
+
     (r'C:\Kaguya-sama wa Kokurasetai S03 1080p Dual Audio WEBRip AAC x265-EMBER\S03E01-Miko Iino Wants to Be Soothed Kaguya '
         r'Doesn’t Realize Chika Fujiwara Wants to Battle [8933E8C9].mkv',
      TVShow(name='Kaguya-sama wa Kokurasetai', season=3, episode=1)),
