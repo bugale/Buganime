@@ -40,6 +40,9 @@ NAME_CONVERSIONS = [
     (r'C:\Kaguya-sama wa Kokurasetai S03 1080p Dual Audio WEBRip AAC x265-EMBER\S03E01-Miko Iino Wants to Be Soothed Kaguya '
         r'Doesn’t Realize Chika Fujiwara Wants to Battle [8933E8C9].mkv',
      TVShow(name='Kaguya-sama wa Kokurasetai', season=3, episode=1)),
+
+    (r'C:\Kaguya-sama wa Kokurasetai S2 - OVA - 1080p WEB H.264 -NanDesuKa (B-Global).mkv',
+     TVShow(name='Kaguya-sama wa Kokurasetai', season=0, episode=1)),
 ]
 
 
