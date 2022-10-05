@@ -3,14 +3,13 @@ import sys
 import subprocess
 import tempfile
 import datetime
-import urllib.request
 import json
 import contextlib
 import logging
 import re
 import dataclasses
 import shutil
-from typing import Iterator, cast
+from typing import Iterator
 
 import cv2
 import win32event
@@ -19,39 +18,12 @@ import youtube_dl
 
 
 OUTPUT_DIR = os.getenv('BUGANIME_OUTPUT_DIR', '')
-TREX_ADDR = os.getenv('TREX_ADDR', '')
-TREX_PWD = os.getenv('TREX_PWD', '')
 
 ANIME4K_ARGS = ['-q', '-w', '-C', 'avc1', '-v']
 ANIME4K_PATH = os.path.join(os.path.dirname(__file__), 'externals', 'Anime4KCPP_CLI', 'Anime4KCPP_CLI.exe')
 
 UPSCALE_MUTEX_NAME = 'anime4kconvert'
 THEME_MUTEX_NAME = 'theme_mutex_%s'
-
-
-def http_get(url: str) -> str:
-    with urllib.request.urlopen(url) as response:
-        return cast(str, response.read())
-
-
-@contextlib.contextmanager
-def trex_sid(addr: str, pwd: str) -> Iterator[str]:
-    sid = json.loads(http_get(f'http://{addr}/login?password={pwd}'))['sid']
-    try:
-        yield sid
-    finally:
-        http_get(f'http://{addr}/logout?sid={sid}')
-
-
-@contextlib.contextmanager
-def trex_pause(addr: str, pwd: str) -> Iterator[None]:
-    with trex_sid(addr=addr, pwd=pwd) as sid:
-        http_get(f'http://{addr}/control?pause=true&sid={sid}')
-    try:
-        yield
-    finally:
-        with trex_sid(addr=addr, pwd=pwd) as sid:
-            http_get(f'http://{addr}/control?pause=false&sid={sid}')
 
 
 @contextlib.contextmanager
@@ -125,11 +97,10 @@ def process_file(input_path: str) -> None:
             shutil.copyfile(input_path, output_path)
         else:
             with lock_mutex(name=UPSCALE_MUTEX_NAME):
-                with trex_pause(addr=TREX_ADDR, pwd=TREX_PWD):
-                    logging.info('Running Anime4KCPP')
-                    proc = subprocess.run([ANIME4K_PATH, *ANIME4K_ARGS, '-i', input_path, '-o', output_path],
-                                          check=False, cwd=tempfile.gettempdir(), capture_output=True, encoding='utf-8')
-                    logging.info('Anime4K CPP for %s returned %d and wrote: %s%s', input_path, proc.returncode, proc.stdout, proc.stderr)
+                logging.info('Running Anime4KCPP')
+                proc = subprocess.run([ANIME4K_PATH, *ANIME4K_ARGS, '-i', input_path, '-o', output_path],
+                                      check=False, cwd=tempfile.gettempdir(), capture_output=True, encoding='utf-8')
+                logging.info('Anime4K CPP for %s returned %d and wrote: %s%s', input_path, proc.returncode, proc.stdout, proc.stderr)
     except Exception:
         logging.exception('Failed to convert %s', input_path)
 
