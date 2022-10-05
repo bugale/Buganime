@@ -87,8 +87,9 @@ def parse_filename(input_path: str) -> TVShow | Movie:
     input_name = os.path.basename(input_path).strip(' -')
 
     # Special/OVAs are season 0
-    if match := re.match(r'^(?P<name>.+?)[ -]+(?:Special|SP|OVA|OAV|Picture Drama)[ -]+E?(?P<episode>\d{1,3})(?:v\d+)?$', input_name):
-        return TVShow(name=match.group('name'), season=0, episode=int(match.group('episode')))
+    if match := re.match(r'^(?P<name>.+?)[ -]+(?:S(?:eason ?)?\d{1,2}[ -]+)?(?:Special|SP|OVA|OAV|Picture Drama)[ -]+E?(?P<episode>\d{1,3}[ -]+)?.*$',
+                         input_name):
+        return TVShow(name=match.group('name'), season=0, episode=int(match.group('episode') or 1))
 
     # Other standalone TV Shows
     if match := re.match(r'^(?P<name>.+?)[ -]+(?:S(?:eason ?)?(?P<season>\d{1,2})[ -]*)?E?(?P<episode>\d{1,3})(?:v\d+)?$', input_name):
