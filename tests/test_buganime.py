@@ -43,6 +43,9 @@ NAME_CONVERSIONS = [
 
     (r'C:\Kaguya-sama wa Kokurasetai S2 - OVA - 1080p WEB H.264 -NanDesuKa (B-Global).mkv',
      TVShow(name='Kaguya-sama wa Kokurasetai', season=0, episode=1)),
+
+    (r'C:\Tensei shitara Ken Deshita - 01 - 2160p WEB H.264 -NanDesKa.mkv',
+     TVShow(name='Tensei shitara Ken Deshita', season=1, episode=1)),
 ]
 
 
