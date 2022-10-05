@@ -50,16 +50,17 @@ class Movie:
 
 def parse_filename(input_path: str) -> TVShow | Movie:
     # Remove metadata in brackets/parentheses and extension (e.g. hash, resolution, etc.)
+    input_path = input_path.replace('_', ' ')
     input_path = re.sub(r'\[[^\]]*\]', '', input_path)
     input_path = re.sub(r'\([^\)]*\)', '', input_path)
-    input_path = os.path.splitext(input_path)[0]
-    input_path = input_path.replace('_', ' ').strip()
+    input_path = re.sub(r'\d{3,4}p[ -][^\\]*', '', input_path)
+    input_path = os.path.splitext(input_path)[0].strip(' -')
 
     # Remove extension and directories
     input_name = os.path.basename(input_path).strip(' -')
 
     # Special/OVAs are season 0
-    if match := re.match(r'^(?P<name>.+?)[ -]+(?:S(?:eason ?)?\d{1,2}[ -]+)?(?:Special|SP|OVA|OAV|Picture Drama)[ -]+E?(?P<episode>\d{1,3}[ -]+)?.*$',
+    if match := re.match(r'^(?P<name>.+?)[ -]+(?:S(?:eason ?)?\d{1,2}[ -]+)?(?:Special|SP|OVA|OAV|Picture Drama)(?:[ -]+E?(?P<episode>\d{1,3})?)?$',
                          input_name):
         return TVShow(name=match.group('name'), season=0, episode=int(match.group('episode') or 1))
 
