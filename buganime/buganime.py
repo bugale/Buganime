@@ -1,29 +1,20 @@
 import os
 import sys
-import subprocess
 import tempfile
 import datetime
-import json
 import contextlib
 import logging
 import re
 import dataclasses
-import shutil
 from typing import Iterator
 
-import cv2
 import win32event
-from youtube_search import YoutubeSearch
-import youtube_dl
+
+from buganime import transcode
 
 
 OUTPUT_DIR = os.getenv('BUGANIME_OUTPUT_DIR', '')
-
-ANIME4K_ARGS = ['-q', '-w', '-C', 'avc1', '-v']
-ANIME4K_PATH = os.path.join(os.path.dirname(__file__), 'externals', 'Anime4KCPP_CLI', 'Anime4KCPP_CLI.exe')
-
 UPSCALE_MUTEX_NAME = 'anime4kconvert'
-THEME_MUTEX_NAME = 'theme_mutex_%s'
 
 
 @contextlib.contextmanager
@@ -92,36 +83,15 @@ def process_file(input_path: str) -> None:
     if not os.path.isdir(os.path.dirname(output_path)):
         os.makedirs(os.path.dirname(output_path))
 
-    # Upscale if necessary
+    logging.info('Output is %s', output_path)
+
     try:
-        if cv2.VideoCapture(input_path).get(cv2.CAP_PROP_FRAME_HEIGHT) >= 2000:  # pylint: disable=no-member
-            shutil.copyfile(input_path, output_path)
-        else:
-            with lock_mutex(name=UPSCALE_MUTEX_NAME):
-                logging.info('Running Anime4KCPP')
-                proc = subprocess.run([ANIME4K_PATH, *ANIME4K_ARGS, '-i', input_path, '-o', output_path],
-                                      check=False, cwd=tempfile.gettempdir(), capture_output=True, encoding='utf-8')
-                logging.info('Anime4K CPP for %s returned %d and wrote: %s%s', input_path, proc.returncode, proc.stdout, proc.stderr)
+        with lock_mutex(name=UPSCALE_MUTEX_NAME):
+            logging.info('Running Upscaler')
+            transcode.main([input_path, output_path])
+            logging.info('Upscaler for %s finished', input_path)
     except Exception:
         logging.exception('Failed to convert %s', input_path)
-
-    # Downlowd theme if necessary (retry 5 times)
-    with lock_mutex(name=(THEME_MUTEX_NAME % re.sub(r'[^a-zA-Z]', '', parsed.name))):
-        for _ in range(5):
-            theme_path = os.path.join(os.path.dirname(output_path), 'theme.%(ext)s')
-            if not os.path.isfile(theme_path % {'ext': 'mp3'}):
-                try:
-                    suffix = json.loads(YoutubeSearch(f'{parsed.name} opening tv size', max_results=1).to_json())['videos'][0]['url_suffix']
-                    logging.info('Downloading youtube opening %s', suffix)
-                    with youtube_dl.YoutubeDL({'outtmpl': theme_path, 'format': 'bestaudio/best', 'postprocessors': [{
-                                                'key': 'FFmpegExtractAudio',
-                                                'preferredcodec': 'mp3',
-                                                'preferredquality': '192',
-                                                }]}) as ydl:
-                        ydl.download([f'https://www.youtube.com{suffix}'])
-                    break
-                except Exception:
-                    logging.exception('Failed to find theme for %s', input_path)
 
 
 def process_path(input_path: str) -> None:
