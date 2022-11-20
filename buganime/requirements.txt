@@ -1,5 +1,0 @@
-pywin32
-opencv-python
-youtube_search
-youtube-dl
-requests

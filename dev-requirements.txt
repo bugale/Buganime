@@ -3,4 +3,7 @@ pylint
 pylint-pytest
 flake8
 mypy
+tqdm-stubs
+types-retry
+types-requests
 -r requirements.txt
