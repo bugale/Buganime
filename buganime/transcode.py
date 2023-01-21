@@ -51,9 +51,10 @@ class Transcoder:
         self.__frame_tasks_queue: Optional[asyncio.Queue[Optional[asyncio.Task[bytes]]]] = None
 
     def __parse_input_streams(self) -> None:
-        current_subtitle_index = 0
+        current_subtitle_index, audio_count, audio_index = 0, 0, 0
         video, self.__audio_index, self.__subtitle_index = None, None, None
-        proc = subprocess.run(['ffprobe', '-show_format', '-show_streams', '-of', 'json', self.__input_path], text=True, capture_output=True, check=True)
+        proc = subprocess.run(['ffprobe', '-show_format', '-show_streams', '-of', 'json', self.__input_path], text=True, capture_output=True, check=True,
+                              encoding='utf-8')
         logging.info('ffprobe %s wrote %s', str(proc.args), proc.stderr)
         for stream in json.loads(proc.stdout)['streams']:
             match stream:
@@ -61,11 +62,16 @@ class Transcoder:
                     video = stream
                 case {'codec_type': 'audio', 'tags': {'language': 'jpn'}}:
                     self.__audio_index = stream['index']
-                case {'codec_type': 'subtitle', 'tags': {'language': 'eng', 'title': str(title)}} if 'S&S' not in title.upper():
+                case {'codec_type': 'audio'}:
+                    audio_count += 1
+                    audio_index = stream['index']
+                case {'codec_type': 'subtitle', 'tags': {'language': str(lang), 'title': str(title)}} if lang in ('en', 'eng') and 'S&S' not in title.upper():
                     self.__subtitle_index = current_subtitle_index
                     current_subtitle_index += 1
                 case {'codec_type': 'subtitle'}:
                     current_subtitle_index += 1
+        if self.__audio_index is None and audio_count == 1:
+            self.__audio_index = audio_index
         assert video is not None
         assert self.__audio_index is not None
         assert self.__subtitle_index is not None

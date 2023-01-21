@@ -119,7 +119,7 @@ def main(args: list[str]) -> int:
     handler_stream.setLevel(logging.DEBUG)
     handler_stream.setFormatter(formatter)
     root.addHandler(handler_stream)
-    handler_file = logging.FileHandler(log_file.name)
+    handler_file = logging.FileHandler(log_file.name, encoding='utf-8')
     handler_file.setLevel(logging.DEBUG)
     handler_file.setFormatter(formatter)
     root.addHandler(handler_file)
