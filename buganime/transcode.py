@@ -1,11 +1,9 @@
-import json
 import contextlib
 import os
 import tempfile
-import sys
 import asyncio
-import subprocess
 import logging
+from dataclasses import dataclass
 from typing import AsyncIterator, cast, Optional
 
 import retry
@@ -18,6 +16,16 @@ from tqdm import tqdm
 MODEL_URL = 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-animevideov3.pth'
 MODEL_PATH = os.path.join(tempfile.gettempdir(), 'realesr-animevideov3.pth')
 FFMPEG_OUTPUT_ARGS = ('-vcodec', 'libx265', '-pix_fmt', 'yuv420p')
+
+
+@dataclass
+class VideoInfo:
+    audio_index: int
+    subtitle_index: int
+    width: int
+    height: int
+    fps: str
+    frames: int
 
 
 class Transcoder:
@@ -36,47 +44,19 @@ class Transcoder:
                 tensor = body(tensor)
             return cast(torch.Tensor, self.__upsampler(tensor) + base)
 
-    def __init__(self, input_path: str, output_path: str, height_out: int) -> None:
+    def __init__(self, input_path: str, output_path: str, height_out: int, video_info: VideoInfo) -> None:
         if not os.path.isfile(MODEL_PATH):
             with open(MODEL_PATH, 'wb') as file:
                 file.write(requests.get(MODEL_URL, timeout=600).content)
         self.__input_path, self.__output_path = input_path, output_path
-        self.__parse_input_streams()
+        self.__video_info = video_info
         self.__height_out = height_out
-        self.__width_out = int(self.__width * self.__height_out / self.__height)
+        self.__width_out = int(self.__video_info.width * self.__height_out / self.__video_info.height)
         model = Transcoder.Module(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=16, upscale=4)
         model.load_state_dict(torch.load(MODEL_PATH)['params'], strict=True)
         self.__model = model.eval().cuda().half()
         self.__gpu_lock: Optional[asyncio.Lock] = None
         self.__frame_tasks_queue: Optional[asyncio.Queue[Optional[asyncio.Task[bytes]]]] = None
-
-    def __parse_input_streams(self) -> None:
-        current_subtitle_index, audio_count, audio_index = 0, 0, 0
-        video, self.__audio_index, self.__subtitle_index = None, None, None
-        proc = subprocess.run(['ffprobe', '-show_format', '-show_streams', '-of', 'json', self.__input_path], text=True, capture_output=True, check=True,
-                              encoding='utf-8')
-        logging.info('ffprobe %s wrote %s', str(proc.args), proc.stderr)
-        for stream in json.loads(proc.stdout)['streams']:
-            match stream:
-                case {'codec_type': 'video', 'disposition': {'default': 1}}:
-                    video = stream
-                case {'codec_type': 'audio', 'tags': {'language': 'jpn'}}:
-                    self.__audio_index = stream['index']
-                case {'codec_type': 'audio'}:
-                    audio_count += 1
-                    audio_index = stream['index']
-                case {'codec_type': 'subtitle', 'tags': {'language': str(lang), 'title': str(title)}} if lang in ('en', 'eng') and 'S&S' not in title.upper():
-                    self.__subtitle_index = current_subtitle_index
-                    current_subtitle_index += 1
-                case {'codec_type': 'subtitle'}:
-                    current_subtitle_index += 1
-        if self.__audio_index is None and audio_count == 1:
-            self.__audio_index = audio_index
-        assert video is not None
-        assert self.__audio_index is not None
-        assert self.__subtitle_index is not None
-        self.__width, self.__height, self.__fps = video['width'], video['height'], video['r_frame_rate']
-        self.__frames = int(video['tags'].get('NUMBER_OF_FRAMES') or video['tags'].get('NUMBER_OF_FRAMES-eng') or 0)
 
     async def __read_input_frames(self) -> AsyncIterator[bytes]:
         args = ('-i', self.__input_path,
@@ -86,7 +66,7 @@ class Transcoder:
         assert proc.stdout
         assert proc.stderr
         try:
-            frame_length = self.__width * self.__height * 3
+            frame_length = self.__video_info.width * self.__video_info.height * 3
             with contextlib.suppress(asyncio.IncompleteReadError):
                 while True:
                     yield await proc.stdout.readexactly(frame_length)
@@ -99,9 +79,9 @@ class Transcoder:
     async def __write_output_frames(self, frames: AsyncIterator[bytes]) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             os.link(self.__input_path, os.path.join(temp_dir, 'input.mkv'))
-            args = ('-f', 'rawvideo', '-framerate', str(self.__fps), '-pix_fmt', 'rgb24', '-s', f'{self.__width_out}x{self.__height_out}', '-i', 'pipe:',
-                    '-i', 'input.mkv',
-                    '-map', '0', '-map', f'1:{self.__audio_index}', '-vf', f'subtitles=input.mkv:si={self.__subtitle_index}',
+            args = ('-f', 'rawvideo', '-framerate', str(self.__video_info.fps), '-pix_fmt', 'rgb24', '-s', f'{self.__width_out}x{self.__height_out}',
+                    '-i', 'pipe:', '-i', 'input.mkv',
+                    '-map', '0', '-map', f'1:{self.__video_info.audio_index}', '-vf', f'subtitles=input.mkv:si={self.__video_info.subtitle_index}',
                     *FFMPEG_OUTPUT_ARGS, self.__output_path,
                     '-loglevel', 'warning', '-y')
             proc = await asyncio.subprocess.create_subprocess_exec('ffmpeg', *args, stdin=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
@@ -109,7 +89,7 @@ class Transcoder:
             assert proc.stdin
             assert proc.stdout
             assert proc.stderr
-            pbar: 'tqdm[None]' = tqdm(total=self.__frames, unit='frame', desc='transcoding')
+            pbar: 'tqdm[None]' = tqdm(total=self.__video_info.frames, unit='frame', desc='transcoding')
             try:
                 async for frame in frames:
                     proc.stdin.write(frame)
@@ -128,10 +108,10 @@ class Transcoder:
             return (frame_upscaled_float * 255.0).round().byte().permute(1, 2, 0).cpu()
 
     async def __upscale_frame(self, frame: bytes) -> bytes:
-        if self.__height == self.__height_out:
+        if self.__video_info.height == self.__height_out:
             return frame
         with torch.no_grad():
-            frame_arr = torch.frombuffer(frame, dtype=torch.uint8).reshape([self.__height, self.__width, 3])
+            frame_arr = torch.frombuffer(frame, dtype=torch.uint8).reshape([self.__video_info.height, self.__video_info.width, 3])
         assert self.__gpu_lock
         async with self.__gpu_lock:
             frame_cpu = await asyncio.to_thread(self.__gpu_upscale, frame_arr)
@@ -158,16 +138,3 @@ class Transcoder:
         gen_task = asyncio.create_task(self.__generate_upscaling_tasks())
         await self.__write_output_frames(self.__get_output_frames())
         await gen_task
-
-
-def main(args: list[str]) -> int:
-    if len(args) != 2:
-        print("Usage: transcode.py <input_path> <output_path>")
-        return 1
-
-    asyncio.run(Transcoder(input_path=args[0], output_path=args[1], height_out=2160).run())
-    return 0
-
-
-if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
