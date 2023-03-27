@@ -6,7 +6,10 @@ import contextlib
 import logging
 import re
 import dataclasses
-from typing import Iterator
+import json
+import subprocess
+import asyncio
+from typing import Iterator, Any
 
 import win32event
 
@@ -37,6 +40,43 @@ class TVShow:
 @dataclasses.dataclass
 class Movie:
     name: str
+
+
+def parse_streams(streams: Any) -> transcode.VideoInfo:
+    def _get_video_stream() -> Any:
+        for stream in streams:
+            match stream:
+                case {'codec_type': 'video', 'disposition': {'default': 1}}:
+                    return stream
+        raise RuntimeError('No default video stream found')
+
+    def _get_audio_stream() -> Any:
+        audio_streams = [stream for stream in streams if stream['codec_type'] == 'audio']
+        for stream in audio_streams:
+            match stream:
+                case {'tags': {'language': 'jpn'}}:
+                    return stream
+        if len(audio_streams) == 1:
+            return audio_streams[0]
+        raise RuntimeError('No Japanese audio stream found')
+
+    def _get_subtitle_stream_index() -> int:
+        subtitle_streams = [stream for stream in streams if stream['codec_type'] == 'subtitle']
+        for i, stream in enumerate(subtitle_streams):
+            match stream:
+                case {'tags': {'language': str(lang), 'title': str(title)}} if (lang in ('en', 'eng') and
+                                                                                'S&S' not in title.upper() and 'SIGNS' not in title.upper()):
+                    return i
+        for i, stream in enumerate(subtitle_streams):
+            match stream:
+                case {'tags': {'language': str(lang)}} if lang in ('en', 'eng'):
+                    return i
+        raise RuntimeError('No English subtitle stream found')
+
+    video = _get_video_stream()
+    return transcode.VideoInfo(audio_index=_get_audio_stream()['index'], subtitle_index=_get_subtitle_stream_index(),
+                               width=video['width'], height=video['height'], fps=video['r_frame_rate'],
+                               frames=int(video['tags'].get('NUMBER_OF_FRAMES') or video['tags'].get('NUMBER_OF_FRAMES-eng') or 0))
 
 
 def parse_filename(input_path: str) -> TVShow | Movie:
@@ -85,10 +125,15 @@ def process_file(input_path: str) -> None:
 
     logging.info('Output is %s', output_path)
 
+    proc = subprocess.run(['ffprobe', '-show_format', '-show_streams', '-of', 'json', input_path], text=True, capture_output=True, check=True,
+                          encoding='utf-8')
+    logging.info('ffprobe %s wrote %s, %s', str(proc.args), proc.stderr, proc.stdout)
+    video_info = parse_streams(json.loads(proc.stdout)['streams'])
+
     try:
         with lock_mutex(name=UPSCALE_MUTEX_NAME):
             logging.info('Running Upscaler')
-            transcode.main([input_path, output_path])
+            asyncio.run(transcode.Transcoder(input_path=input_path, output_path=output_path, height_out=2160, video_info=video_info).run())
             logging.info('Upscaler for %s finished', input_path)
     except Exception:
         logging.exception('Failed to convert %s', input_path)
