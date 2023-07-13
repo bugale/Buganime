@@ -51,7 +51,7 @@ class Transcoder:
         self.__input_path, self.__output_path = input_path, output_path
         self.__video_info = video_info
         self.__height_out = height_out
-        self.__width_out = int(self.__video_info.width * self.__height_out / self.__video_info.height)
+        self.__width_out = round(self.__video_info.width * self.__height_out / self.__video_info.height)
         model = Transcoder.Module(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=16, upscale=4)
         model.load_state_dict(torch.load(MODEL_PATH)['params'], strict=True)
         self.__model = model.eval().cuda().half()
