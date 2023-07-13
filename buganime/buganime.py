@@ -62,16 +62,17 @@ def parse_streams(streams: Any) -> transcode.VideoInfo:
 
     def _get_subtitle_stream_index() -> int:
         subtitle_streams = [stream for stream in streams if stream['codec_type'] == 'subtitle']
-        for i, stream in enumerate(subtitle_streams):
-            match stream:
-                case {'tags': {'language': str(lang), 'title': str(title)}} if (lang in ('en', 'eng') and
-                                                                                'S&S' not in title.upper() and 'SIGNS' not in title.upper()):
-                    return i
+        relevant_streams = []
         for i, stream in enumerate(subtitle_streams):
             match stream:
                 case {'tags': {'language': str(lang)}} if lang in ('en', 'eng'):
-                    return i
-        raise RuntimeError('No English subtitle stream found')
+                    if all(x not in stream['tags'].get('title', '').upper() for x in ('S&S', 'SIGNS', 'FORCED')):
+                        relevant_streams.append((i, stream))
+        if not relevant_streams:
+            raise RuntimeError('No English subtitle stream found')
+        if len(relevant_streams) == 1:
+            return relevant_streams[0][0]
+        return max(relevant_streams, key=lambda x: int(x[1]['tags'].get('NUMBER_OF_BYTES-eng', '0')))[0]
 
     video = _get_video_stream()
     return transcode.VideoInfo(audio_index=_get_audio_stream()['index'], subtitle_index=_get_subtitle_stream_index(),
@@ -94,6 +95,10 @@ def parse_filename(input_path: str) -> TVShow | Movie:
     if match := re.match(r'^(?P<name>.+?)[ -]+(?:S(?:eason ?)?\d{1,2}[ -]+)?(?:Special|SP|OVA|OAV|Picture Drama)(?:[ -]+E?(?P<episode>\d{1,3})?)?$',
                          input_name):
         return TVShow(name=match.group('name'), season=0, episode=int(match.group('episode') or 1))
+
+    # Formatted standalone TV Shows
+    if match := re.match(r'^(?P<name>.+?)[ -]+S(?P<season>\d{1,2})E(?P<episode>\d{1,3})(?:[ -]+.*)?$', input_name):
+        return TVShow(name=match.group('name'), season=int(match.group('season')), episode=int(match.group('episode')))
 
     # Other standalone TV Shows
     if match := re.match(r'^(?P<name>.+?)[ -]+(?:S(?:eason ?)?(?P<season>\d{1,2})[ -]*)?E?(?P<episode>\d{1,3})(?:v\d+)?$', input_name):
