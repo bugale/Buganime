@@ -69,6 +69,8 @@ def parse_streams(streams: Any) -> transcode.VideoInfo:
                     if all(x not in stream['tags'].get('title', '').upper() for x in ('S&S', 'SIGNS', 'FORCED')):
                         relevant_streams.append((i, stream))
         if not relevant_streams:
+            if len(subtitle_streams) == 1:
+                return 0
             raise RuntimeError('No English subtitle stream found')
         if len(relevant_streams) == 1:
             return relevant_streams[0][0]

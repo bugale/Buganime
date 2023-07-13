@@ -62,6 +62,7 @@ STREAM_CONVERSIONS = [
     ('3.json', transcode.VideoInfo(audio_index=1, subtitle_index=0, width=1920, height=1080, fps='24000/1001', frames=34045)),
     ('4.json', transcode.VideoInfo(audio_index=2, subtitle_index=1, width=1920, height=1080, fps='24000/1001', frames=34047)),
     ('5.json', transcode.VideoInfo(audio_index=2, subtitle_index=1, width=1920, height=1080, fps='24000/1001', frames=35638)),
+    ('6.json', transcode.VideoInfo(audio_index=1, subtitle_index=0, width=1920, height=1080, fps='30/1', frames=7425)),
 ]
 
 
