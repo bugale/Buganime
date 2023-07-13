@@ -49,15 +49,19 @@ NAME_CONVERSIONS = [
 
     (r'C:\Tensei shitara Ken Deshita - 01 - 2160p WEB H.264 -NanDesKa.mkv',
      buganime.TVShow(name='Tensei shitara Ken Deshita', season=1, episode=1)),
+
+    (r'C:\Watashi no Shiawase na Kekkon - S01E01 - MULTi.mkv',
+     buganime.TVShow(name='Watashi no Shiawase na Kekkon', season=1, episode=1)),
 ]
 
 
 STREAM_CONVERSIONS = [
-    ('0.json', transcode.VideoInfo(audio_index=1, subtitle_index=0, width=1920, height=1080, fps='24000/1001', frames=34094)),
+    ('0.json', transcode.VideoInfo(audio_index=1, subtitle_index=1, width=1920, height=1080, fps='24000/1001', frames=34094)),
     ('1.json', transcode.VideoInfo(audio_index=1, subtitle_index=3, width=1920, height=1080, fps='24000/1001', frames=34095)),
     ('2.json', transcode.VideoInfo(audio_index=1, subtitle_index=0, width=1920, height=1080, fps='24000/1001', frames=34046)),
     ('3.json', transcode.VideoInfo(audio_index=1, subtitle_index=0, width=1920, height=1080, fps='24000/1001', frames=34045)),
     ('4.json', transcode.VideoInfo(audio_index=2, subtitle_index=1, width=1920, height=1080, fps='24000/1001', frames=34047)),
+    ('5.json', transcode.VideoInfo(audio_index=2, subtitle_index=1, width=1920, height=1080, fps='24000/1001', frames=35638)),
 ]
 
 
