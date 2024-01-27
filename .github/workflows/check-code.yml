@@ -1,0 +1,53 @@
+---
+name: Checks
+on:
+  pull_request:
+    paths:
+      - '**.py*'
+      - '.github/workflows/check-code.yml'
+jobs:
+  lint:
+    strategy:
+      fail-fast: false
+      matrix:
+        linter: [
+          {'name': 'flake8', 'format': 'flake8', 'cwd': '.', 'cmd': 'flake8 .'},
+          {'name': 'mypy', 'format': 'mypy', 'cwd': '.', 'cmd': 'mypy .'},
+          {'name': 'pylint', 'format': 'pylint', 'cwd': '.', 'cmd': 'pylint --load-plugins pylint_pytest $(Get-ChildItem -Filter *.py -Recurse .)'},
+        ]
+    name: ${{ matrix.linter.name }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install Python dependencies
+        run: python -m pip install -r dev-requirements.txt
+      - name: Lint
+        run: cd ${{ matrix.linter.cwd }}; ${{ matrix.linter.cmd }} > lint.log
+      - name: Convert
+        uses: bugale/bugalint@v2
+        if: always()
+        with:
+          inputFile: 'lint.log'
+          toolName: ${{ matrix.linter.name }}
+          inputFormat: ${{ matrix.linter.format }}
+      - name: Upload results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: sarif.json
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - uses: FedericoCarboni/setup-ffmpeg@v2
+        id: setup-ffmpeg
+      - name: Install test dependencies
+        run: python -m pip install -r dev-requirements.txt
+      - name: Test
+        run: pytest tests

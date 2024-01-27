@@ -1,0 +1,16 @@
+---
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    labels:
+      - dependabot
+      - actions
+    schedule:
+      interval: daily
+    groups:
+      action-dependencies:
+        patterns:
+          - '*'
+    commit-message:
+      prefix: 'build'

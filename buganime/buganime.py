@@ -157,7 +157,7 @@ def process_path(input_path: str) -> None:
 
 def main(args: list[str]) -> int:
     if len(args) != 1:
-        print("Usage: buganime.py <input_path>")
+        print('Usage: buganime.py <input_path>')
         return 1
 
     input_path = args[0]

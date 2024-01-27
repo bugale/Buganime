@@ -2,6 +2,7 @@ pytest
 pylint
 pylint-pytest
 flake8
+flake8-quotes
 mypy
 tqdm-stubs
 types-retry
