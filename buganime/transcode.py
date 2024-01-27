@@ -104,8 +104,8 @@ class Transcoder:
     def __gpu_upscale(self, frame: torch.Tensor) -> torch.Tensor:
         with torch.no_grad():
             frame_float = frame.cuda().permute(2, 0, 1).half() / 255
-            frame_upscaled_float = cast(torch.Tensor, self.__model(frame_float.unsqueeze(0)).data).squeeze().clamp_(0, 1)
-            return (frame_upscaled_float * 255.0).round().byte().permute(1, 2, 0).cpu()
+            frame_upscaled_float = self.__model(frame_float.unsqueeze(0)).data.squeeze().clamp_(0, 1)
+            return cast(torch.Tensor, (frame_upscaled_float * 255.0).round().byte().permute(1, 2, 0).cpu())
 
     async def __upscale_frame(self, frame: bytes) -> bytes:
         if self.__video_info.height == self.__height_out:
