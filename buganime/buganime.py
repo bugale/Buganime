@@ -141,20 +141,20 @@ def process_file(input_path: str) -> None:
     logging.info('ffprobe %s wrote %s, %s', str(proc.args), proc.stderr, proc.stdout)
     video_info = parse_streams(json.loads(proc.stdout)['streams'])
 
-    try:
-        with lock_mutex(name=UPSCALE_MUTEX_NAME):
-            logging.info('Running Upscaler')
-            asyncio.run(transcode.Transcoder(input_path=input_path, output_path=output_path, height_out=2160, video_info=video_info).run())
-            logging.info('Upscaler for %s finished', input_path)
-    except Exception:
-        logging.exception('Failed to convert %s', input_path)
+    with lock_mutex(name=UPSCALE_MUTEX_NAME):
+        logging.info('Running Upscaler')
+        asyncio.run(transcode.Transcoder(input_path=input_path, output_path=output_path, height_out=2160, width_out=3840, video_info=video_info).run())
+        logging.info('Upscaler for %s finished', input_path)
 
 
 def process_path(input_path: str) -> None:
     if os.path.isdir(input_path):
         for root, _, files in os.walk(input_path):
             for file in files:
-                process_file(input_path=os.path.join(root, file))
+                try:
+                    process_file(input_path=os.path.join(root, file))
+                except Exception:
+                    logging.exception('Failed to convert %s', input_path)
     else:
         process_file(input_path=input_path)
 
