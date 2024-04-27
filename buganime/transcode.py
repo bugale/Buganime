@@ -4,6 +4,7 @@ import tempfile
 import asyncio
 import logging
 import warnings
+import shutil
 from dataclasses import dataclass
 from typing import AsyncIterator, cast, Optional
 
@@ -83,7 +84,10 @@ class Transcoder:
 
     async def __write_output_frames(self, frames: AsyncIterator[bytes]) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            os.link(self.__input_path, os.path.join(temp_dir, 'input.mkv'))
+            if os.path.splitdrive(self.__input_path)[0] == os.path.splitdrive(temp_dir)[0]:
+                os.link(self.__input_path, os.path.join(temp_dir, 'input.mkv'))
+            else:
+                shutil.copy(self.__input_path, os.path.join(temp_dir, 'input.mkv'))
             width_out = self.__width_out
             height_out = self.__height_out
             if self.__video_info.width / self.__video_info.height > self.__width_out / self.__height_out:
