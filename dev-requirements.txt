@@ -7,4 +7,5 @@ mypy
 tqdm-stubs
 types-retry
 types-requests
+torch<2.3.0  # Due to https://github.com/pytorch/pytorch/issues/124897
 -r requirements.txt
