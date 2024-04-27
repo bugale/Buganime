@@ -44,9 +44,12 @@ class Movie:
 
 def parse_streams(streams: Any) -> transcode.VideoInfo:
     def _get_video_stream() -> Any:
-        for stream in streams:
+        video_streams = [stream for stream in streams if stream['codec_type'] == 'video']
+        if len(video_streams) == 1:
+            return video_streams[0]
+        for stream in video_streams:
             match stream:
-                case {'codec_type': 'video', 'disposition': {'default': 1}}:
+                case {'disposition': {'default': 1}}:
                     return stream
         raise RuntimeError('No default video stream found')
 
@@ -79,7 +82,7 @@ def parse_streams(streams: Any) -> transcode.VideoInfo:
     video = _get_video_stream()
     return transcode.VideoInfo(audio_index=_get_audio_stream()['index'], subtitle_index=_get_subtitle_stream_index(),
                                width=video['width'], height=video['height'], fps=video['r_frame_rate'],
-                               frames=int(video['tags'].get('NUMBER_OF_FRAMES') or video['tags'].get('NUMBER_OF_FRAMES-eng') or 0))
+                               frames=int(video.get('tags', {}).get('NUMBER_OF_FRAMES') or video.get('tags', {}).get('NUMBER_OF_FRAMES-eng') or 0))
 
 
 def parse_filename(input_path: str) -> TVShow | Movie:
