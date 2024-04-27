@@ -1,6 +1,13 @@
 import os
 import tempfile
 import json
+import subprocess
+import functools
+import typing
+
+import cv2
+import pytest
+
 from buganime import buganime, transcode
 
 NAME_CONVERSIONS = [
@@ -66,6 +73,11 @@ NAME_CONVERSIONS = [
 ]
 
 
+@pytest.mark.parametrize('path,result', NAME_CONVERSIONS)
+def test_parse_filename(path: str, result: buganime.TVShow | buganime.Movie) -> None:
+    assert buganime.parse_filename(path) == result
+
+
 STREAM_CONVERSIONS = [
     ('0.json', transcode.VideoInfo(audio_index=1, subtitle_index=1, width=1920, height=1080, fps='24000/1001', frames=34094)),
     ('1.json', transcode.VideoInfo(audio_index=1, subtitle_index=3, width=1920, height=1080, fps='24000/1001', frames=34095)),
@@ -78,18 +90,54 @@ STREAM_CONVERSIONS = [
 ]
 
 
-def test_parse_filename() -> None:
-    for path, result in NAME_CONVERSIONS:
-        assert buganime.parse_filename(path) == result
+@pytest.mark.parametrize('filename,result', STREAM_CONVERSIONS)
+def test_parse_streams(filename: str, result: transcode.VideoInfo) -> None:
+    with open(os.path.join(os.path.dirname(__file__), 'data', filename), 'rb') as file:
+        assert buganime.parse_streams(json.loads(file.read())['streams']) == result
 
 
-def test_parse_streams() -> None:
-    for filename, result in STREAM_CONVERSIONS:
-        with open(os.path.join(os.path.dirname(__file__), 'data', filename), 'rb') as file:
-            assert buganime.parse_streams(json.loads(file.read())['streams']) == result
+def _check_side_bars(frame: typing.Any, bar_size: int) -> None:
+    assert max(cv2.mean(frame[0:, :bar_size])[:3]) < 1
+    assert max(cv2.mean(frame[0:, -bar_size:])[:3]) < 1
+    assert min(cv2.mean(frame[:1, bar_size:-bar_size])[:3]) > 254
+    assert min(cv2.mean(frame[-1:, bar_size:-bar_size])[:3]) > 254
 
 
-def test_sanity() -> None:
+def _check_top_bottom_bars(frame: typing.Any, bar_size: int) -> None:
+    assert max(cv2.mean(frame[:bar_size])[:3]) < 1
+    assert max(cv2.mean(frame[-bar_size:])[:3]) < 1
+    assert min(cv2.mean(frame[bar_size:-bar_size, :1])[:3]) > 254
+    assert min(cv2.mean(frame[bar_size:-bar_size, -1:])[:3]) > 254
+
+
+VIDEO_TESTS = [
+    ('0.mkv', '24000/1001', None),
+
+    # 1900x1080 -> 3840x2160, validate black bars on left/right
+    ('1.mkv', '24000/1001', functools.partial(_check_side_bars, bar_size=20)),
+
+    # 1940x1080 -> 3840x2160, validate black bars on top/bottom
+    ('2.mkv', '24000/1001', functools.partial(_check_top_bottom_bars, bar_size=11)),
+]
+
+
+@pytest.mark.parametrize('filename,fps,check_func', VIDEO_TESTS)
+def test_transcode(filename: str, fps: str, check_func: typing.Callable[[typing.Any], None] | None) -> None:
     with tempfile.TemporaryDirectory() as tempdir:
         buganime.OUTPUT_DIR = tempdir
-        buganime.process_file(os.path.join(os.path.dirname(__file__), 'data', '0.mkv'))
+        output_path = os.path.join(tempdir, 'Movies', filename)
+        buganime.process_file(os.path.join(os.path.dirname(__file__), 'data', filename))
+        assert os.path.isfile(output_path)
+        stream = json.loads(subprocess.run(['ffprobe', '-show_format', '-show_streams', '-of', 'json', output_path], text=True, capture_output=True,
+                                           check=True, encoding='utf-8').stdout)['streams'][0]
+        assert stream['codec_name'] == 'hevc'
+        assert stream['width'] == 3840
+        assert stream['height'] == 2160
+        assert stream['r_frame_rate'] == fps
+        if check_func is not None:
+            video = cv2.VideoCapture(output_path)
+            try:
+                frame = video.read()[1]
+                check_func(frame)
+            finally:
+                video.release()

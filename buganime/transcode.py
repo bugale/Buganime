@@ -3,6 +3,7 @@ import os
 import tempfile
 import asyncio
 import logging
+import warnings
 from dataclasses import dataclass
 from typing import AsyncIterator, cast, Optional
 
@@ -44,14 +45,14 @@ class Transcoder:
                 tensor = body(tensor)
             return cast(torch.Tensor, self.__upsampler(tensor) + base)
 
-    def __init__(self, input_path: str, output_path: str, height_out: int, video_info: VideoInfo) -> None:
+    def __init__(self, input_path: str, output_path: str, height_out: int, width_out: int, video_info: VideoInfo) -> None:
         if not os.path.isfile(MODEL_PATH):
             with open(MODEL_PATH, 'wb') as file:
                 file.write(requests.get(MODEL_URL, timeout=600).content)
         self.__input_path, self.__output_path = input_path, output_path
         self.__video_info = video_info
         self.__height_out = height_out
-        self.__width_out = round(self.__video_info.width * self.__height_out / self.__video_info.height)
+        self.__width_out = width_out
         model = Transcoder.Module(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=16, upscale=4)
         model.load_state_dict(torch.load(MODEL_PATH)['params'], strict=True)
         self.__model = model.eval().cuda().half()
@@ -79,9 +80,16 @@ class Transcoder:
     async def __write_output_frames(self, frames: AsyncIterator[bytes]) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             os.link(self.__input_path, os.path.join(temp_dir, 'input.mkv'))
-            args = ('-f', 'rawvideo', '-framerate', str(self.__video_info.fps), '-pix_fmt', 'rgb24', '-s', f'{self.__width_out}x{self.__height_out}',
+            width_out = self.__width_out
+            height_out = self.__height_out
+            if self.__video_info.width / self.__video_info.height > self.__width_out / self.__height_out:
+                height_out = round(self.__video_info.height * self.__width_out / self.__video_info.width)
+            else:
+                width_out = round(self.__video_info.width * self.__height_out / self.__video_info.height)
+            args = ('-f', 'rawvideo', '-framerate', str(self.__video_info.fps), '-pix_fmt', 'rgb24', '-s', f'{width_out}x{height_out}',
                     '-i', 'pipe:', '-i', 'input.mkv',
-                    '-map', '0', '-map', f'1:{self.__video_info.audio_index}', '-vf', f'subtitles=input.mkv:si={self.__video_info.subtitle_index}',
+                    '-map', '0', '-map', f'1:{self.__video_info.audio_index}',
+                    '-vf', f'subtitles=input.mkv:si={self.__video_info.subtitle_index}, pad={self.__width_out}:{self.__height_out}:(ow-iw)/2:(oh-ih)/2:black',
                     *FFMPEG_OUTPUT_ARGS, self.__output_path,
                     '-loglevel', 'warning', '-y')
             proc = await asyncio.subprocess.create_subprocess_exec('ffmpeg', *args, stdin=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
@@ -111,7 +119,8 @@ class Transcoder:
         if self.__video_info.height == self.__height_out:
             return frame
         with torch.no_grad():
-            frame_arr = torch.frombuffer(frame, dtype=torch.uint8).reshape([self.__video_info.height, self.__video_info.width, 3])
+            with warnings.catch_warnings(action='ignore'):
+                frame_arr = torch.frombuffer(frame, dtype=torch.uint8).reshape([self.__video_info.height, self.__video_info.width, 3])
         assert self.__gpu_lock
         async with self.__gpu_lock:
             frame_cpu = await asyncio.to_thread(self.__gpu_upscale, frame_arr)
