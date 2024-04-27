@@ -40,8 +40,8 @@ NAME_CONVERSIONS = [
     (r'C:\Kaguya-sama - Love is War - S01E06.mkv',
      buganime.TVShow(name='Kaguya-sama - Love is War', season=1, episode=6)),
 
-    (r'C:\Kaguya-sama wa Kokurasetai S03 1080p Dual Audio WEBRip AAC x265-EMBER\S03E01-Miko Iino Wants to Be Soothed Kaguya '
-        r'Doesn’t Realize Chika Fujiwara Wants to Battle [8933E8C9].mkv',
+    (r'C:\Kaguya-sama wa Kokurasetai S03 1080p Dual Audio WEBRip AAC x265-EMBER\S03E01-Miko Iino Wants to Be Soothed Kaguya Doesn’t Realize Chika Fujiwara '
+        r'Wants to Battle [8933E8C9].mkv',
      buganime.TVShow(name='Kaguya-sama wa Kokurasetai', season=3, episode=1)),
 
     (r'C:\Kaguya-sama wa Kokurasetai S2 - OVA - 1080p WEB H.264 -NanDesuKa (B-Global).mkv',
@@ -52,6 +52,17 @@ NAME_CONVERSIONS = [
 
     (r'C:\Watashi no Shiawase na Kekkon - S01E01 - MULTi.mkv',
      buganime.TVShow(name='Watashi no Shiawase na Kekkon', season=1, episode=1)),
+
+    (r'C:\Monogatari Series\15. Zoku Owarimonogatari\Zoku Owarimonogatari 01 - Koyomi Reverse, Part 1.mkv',
+     buganime.TVShow(name='Zoku Owarimonogatari', season=1, episode=1)),
+
+    (r'C:\SNAFU S01-S03+OVA 1080p Dual Audio BDRip 10 bits DD x265-EMBER\SNAFU S02+OVA 1080p Dual Audio BDRip 10 bits DD x265-EMBER\Series\S02E01-Nobody Knows'
+        r'Why They Came to the Service Club [7CE95AC0].mkv',
+     buganime.TVShow(name='SNAFU', season=2, episode=1)),
+
+    (r'C:\Temp\Torrents\SNAFU S01-S03+OVA 1080p Dual Audio BDRip 10 bits DD x265-EMBER\SNAFU S02+OVA 1080p Dual Audio BDRip 10 bits DD x265-EMBER\OVA\S02E14 '
+        r'[OVA]-Undoubtedly, Girls Are Made of Sugar, Spice, and Everything Nice [7E9E8A1F].mkv',
+     buganime.TVShow(name='SNAFU', season=2, episode=14)),
 ]
 
 
