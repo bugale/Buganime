@@ -1,13 +1,6 @@
 {
-    "python.linting.enabled": true,
-    "python.linting.flake8Enabled": true,
-    "python.linting.flake8Args": [],
-    "python.linting.mypyEnabled": true,
-    "python.linting.mypyArgs": ["--follow-imports=silent"],
-    "python.linting.pylintEnabled": true,
-    "python.linting.pylintArgs": ["--load-plugins", "pylint_pytest"],
-    "python.testing.pytestEnabled": true,
-    "files.associations": {
-        "*.yaml": "home-assistant"
-    }
+    "flake8.args": [],
+    "mypy-type-checker.args": ["--follow-imports=silent"],
+    "pylint.args": ["--load-plugins", "pylint_pytest"],
+    "python.testing.pytestEnabled": true
 }
