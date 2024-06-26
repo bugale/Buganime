@@ -19,6 +19,8 @@ from buganime import transcode
 OUTPUT_DIR = os.getenv('BUGANIME_OUTPUT_DIR', '')
 UPSCALE_MUTEX_NAME = 'anime4kconvert'
 
+SUPPORTED_SUBTITLE_CODECS = ('ass', 'subrip')
+
 
 @contextlib.contextmanager
 def lock_mutex(name: str) -> Iterator[None]:
@@ -69,7 +71,8 @@ def parse_streams(streams: Any) -> transcode.VideoInfo:
         for i, stream in enumerate(subtitle_streams):
             match stream:
                 case {'tags': {'language': str(lang)}} if lang in ('en', 'eng'):
-                    if all(x not in stream['tags'].get('title', '').upper() for x in ('S&S', 'SIGNS', 'FORCED')):
+                    if all(x not in stream['tags'].get('title', '').upper() for x in ('S&S', 'SIGNS', 'FORCED')) and \
+                       stream['codec_name'].lower() in SUPPORTED_SUBTITLE_CODECS:
                         relevant_streams.append((i, stream))
         if not relevant_streams:
             if len(subtitle_streams) == 1:
