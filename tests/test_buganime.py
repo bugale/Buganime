@@ -131,7 +131,8 @@ def test_transcode(filename: str, fps: str, check_func: typing.Callable[[typing.
     with tempfile.TemporaryDirectory() as tempdir:
         buganime.OUTPUT_DIR = tempdir
         output_path = os.path.join(tempdir, 'Movies', filename)
-        buganime.process_file(os.path.join(os.path.dirname(__file__), 'data', filename))
+        with pytest.warns(FutureWarning, match='You are using `torch.load`'):
+            buganime.process_file(os.path.join(os.path.dirname(__file__), 'data', filename))
         assert os.path.isfile(output_path)
         stream = json.loads(subprocess.run(['ffprobe', '-show_format', '-show_streams', '-of', 'json', output_path], text=True, capture_output=True,
                                            check=True, encoding='utf-8').stdout)['streams'][0]
