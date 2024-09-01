@@ -109,15 +109,15 @@ def parse_filename(input_path: str) -> TVShow | Movie:
     if match := re.match(r'^(?P<name>.+?)[ -]+S(?P<season>\d{1,2})E(?P<episode>\d{1,3})(?:[ -]+.*)?$', input_name):
         return TVShow(name=match.group('name'), season=int(match.group('season')), episode=int(match.group('episode')))
 
-    # Other standalone TV Shows
-    if match := re.match(r'^(?P<name>.+?)[ -]* (?:S(?:eason ?)?(?P<season>\d{1,2})[ -]*)?E?(?P<episode>\d{1,3})(?:v\d+)?(?:[ -].*)?$', input_name):
-        return TVShow(name=match.group('name'), season=int(match.group('season') or '1'), episode=int(match.group('episode')))
-
     # Structured TV Shows
     dir_re = r'(?P<name>[^\\]+?)[ -]+S(?:eason ?)?\d{1,2}(?:[ -][^\\]*)?'
     file_re = r'[^\\]*S(?P<season>\d{1,2})E(?P<episode>\d{1,3})(?:[ -][^\\]*)?'
     if match := re.match(fr'^.*\\{dir_re}(?:\\.*)?\\{file_re}$', input_path):
         return TVShow(name=match.group('name'), season=int(match.group('season')), episode=int(match.group('episode')))
+
+    # Other standalone TV Shows
+    if match := re.match(r'^(?P<name>.+?)[ -]* (?:S(?:eason ?)?(?P<season>\d{1,2})[ -]*)?E?(?P<episode>\d{1,3})(?:v\d+)?(?:[ -].*)?$', input_name):
+        return TVShow(name=match.group('name'), season=int(match.group('season') or '1'), episode=int(match.group('episode')))
 
     return Movie(name=input_name)
 
