@@ -54,6 +54,12 @@ class Transcoder:
         self.__video_info = video_info
         self.__height_out = height_out
         self.__width_out = width_out
+        self.__upscale_height_out = self.__height_out
+        self.__upscale_width_out = self.__width_out
+        if self.__video_info.width / self.__video_info.height > self.__width_out / self.__height_out:
+            self.__upscale_height_out = round(self.__video_info.height * self.__width_out / self.__video_info.width)
+        else:
+            self.__upscale_width_out = round(self.__video_info.width * self.__height_out / self.__video_info.height)
         model = Transcoder.Module(num_in_ch=3, num_out_ch=3, num_feat=64, num_conv=16, upscale=4)
         if torch.cuda.is_available():
             model.load_state_dict(torch.load(MODEL_PATH)['params'], strict=True)
@@ -88,13 +94,8 @@ class Transcoder:
                 os.link(self.__input_path, os.path.join(temp_dir, 'input.mkv'))
             else:
                 shutil.copy(self.__input_path, os.path.join(temp_dir, 'input.mkv'))
-            width_out = self.__width_out
-            height_out = self.__height_out
-            if self.__video_info.width / self.__video_info.height > self.__width_out / self.__height_out:
-                height_out = round(self.__video_info.height * self.__width_out / self.__video_info.width)
-            else:
-                width_out = round(self.__video_info.width * self.__height_out / self.__video_info.height)
-            args = ('-f', 'rawvideo', '-framerate', str(self.__video_info.fps), '-pix_fmt', 'rgb24', '-s', f'{width_out}x{height_out}',
+            args = ('-f', 'rawvideo', '-framerate', str(self.__video_info.fps), '-pix_fmt', 'rgb24',
+                    '-s', f'{self.__upscale_width_out}x{self.__upscale_height_out}',
                     '-i', 'pipe:', '-i', 'input.mkv',
                     '-map', '0', '-map', f'1:{self.__video_info.audio_index}',
                     '-vf', f'subtitles=input.mkv:si={self.__video_info.subtitle_index}, pad={self.__width_out}:{self.__height_out}:(ow-iw)/2:(oh-ih)/2:black',
@@ -136,7 +137,7 @@ class Transcoder:
         async with self.__gpu_lock:
             frame_cpu = await asyncio.to_thread(self.__gpu_upscale, frame_arr)
         return cast(bytes, await asyncio.to_thread(
-            lambda: cv2.resize(frame_cpu.numpy(), (self.__width_out, self.__height_out), interpolation=cv2.INTER_LANCZOS4).tobytes()))
+            lambda: cv2.resize(frame_cpu.numpy(), (self.__upscale_width_out, self.__upscale_height_out), interpolation=cv2.INTER_LANCZOS4).tobytes()))
 
     async def __generate_upscaling_tasks(self) -> None:
         assert self.__frame_tasks_queue
