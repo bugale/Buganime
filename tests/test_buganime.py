@@ -67,15 +67,15 @@ NAME_CONVERSIONS = [
         r'Why They Came to the Service Club [7CE95AC0].mkv',
      buganime.TVShow(name='SNAFU', season=2, episode=1)),
 
-    (r'C:\Temp\Torrents\SNAFU S01-S03+OVA 1080p Dual Audio BDRip 10 bits DD x265-EMBER\SNAFU S02+OVA 1080p Dual Audio BDRip 10 bits DD x265-EMBER\OVA\S02E14 '
+    (r'C:\SNAFU S01-S03+OVA 1080p Dual Audio BDRip 10 bits DD x265-EMBER\SNAFU S02+OVA 1080p Dual Audio BDRip 10 bits DD x265-EMBER\OVA\S02E14 '
         r'[OVA]-Undoubtedly, Girls Are Made of Sugar, Spice, and Everything Nice [7E9E8A1F].mkv',
      buganime.TVShow(name='SNAFU', season=2, episode=14)),
 
-    (r'C:\Temp\Torrents\Mushoku Tensei S01+SP 1080p Dual Audio BDRip 10 bits DDP x265-EMBER\Mushoku Tensei S01P01 1080p Dual Audio BDRip 10 bits DD '
-        r'x265-EMBER\S01E08-Turning Point 1 V2 [87C2150F].mkv',
+    (r'C:\Mushoku Tensei S01+SP 1080p Dual Audio BDRip 10 bits DDP x265-EMBER\Mushoku Tensei S01P01 1080p Dual Audio BDRip 10 bits DD x265-EMBER'
+        r'\S01E08-Turning Point 1 V2 [87C2150F].mkv',
      buganime.TVShow(name='Mushoku Tensei', season=1, episode=8)),
 
-    (r'C:\Temp\Torrents\Mushoku Tensei S02P01+SP 1080p Dual Audio BDRip 10 bits DD+ x265-EMBER\S02E01-The Brokenhearted Mage [AFBB9792].mkv',
+    (r'C:\Mushoku Tensei S02P01+SP 1080p Dual Audio BDRip 10 bits DD+ x265-EMBER\S02E01-The Brokenhearted Mage [AFBB9792].mkv',
      buganime.TVShow(name='Mushoku Tensei', season=2, episode=1)),
 ]
 
