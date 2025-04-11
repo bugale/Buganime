@@ -23,7 +23,7 @@ FFMPEG_OUTPUT_ARGS = ('-vcodec', 'libx265', '-pix_fmt', 'yuv420p')
 @dataclass
 class VideoInfo:
     audio_index: int
-    subtitle_index: int
+    subtitle_index: Optional[int]
     width: int
     height: int
     fps: str
@@ -94,11 +94,13 @@ class Transcoder:
                 os.link(self.__input_path, os.path.join(temp_dir, 'input.mkv'))
             else:
                 shutil.copy(self.__input_path, os.path.join(temp_dir, 'input.mkv'))
+            filter_str = f'pad={self.__width_out}:{self.__height_out}:(ow-iw)/2:(oh-ih)/2:black'
+            if self.__video_info.subtitle_index is not None:
+                filter_str = f'subtitles=input.mkv:si={self.__video_info.subtitle_index}, {filter_str}'
             args = ('-f', 'rawvideo', '-framerate', str(self.__video_info.fps), '-pix_fmt', 'rgb24',
                     '-s', f'{self.__upscale_width_out}x{self.__upscale_height_out}',
                     '-i', 'pipe:', '-i', 'input.mkv',
-                    '-map', '0', '-map', f'1:{self.__video_info.audio_index}',
-                    '-vf', f'subtitles=input.mkv:si={self.__video_info.subtitle_index}, pad={self.__width_out}:{self.__height_out}:(ow-iw)/2:(oh-ih)/2:black',
+                    '-map', '0', '-map', f'1:{self.__video_info.audio_index}', '-vf', filter_str,
                     *FFMPEG_OUTPUT_ARGS, self.__output_path,
                     '-loglevel', 'warning', '-y')
             proc = await asyncio.subprocess.create_subprocess_exec('ffmpeg', *args, stdin=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
