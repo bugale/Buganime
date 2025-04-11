@@ -9,6 +9,7 @@ import dataclasses
 import json
 import subprocess
 import asyncio
+import argparse
 from typing import Iterator, Any
 
 import win32event
@@ -44,7 +45,7 @@ class Movie:
     name: str
 
 
-def parse_streams(streams: Any) -> transcode.VideoInfo:
+def parse_streams(streams: Any, accept_no_subtitles: bool = False) -> transcode.VideoInfo:
     def _get_video_stream() -> Any:
         video_streams = [stream for stream in streams if stream['codec_type'] == 'video']
         if len(video_streams) == 1:
@@ -83,7 +84,13 @@ def parse_streams(streams: Any) -> transcode.VideoInfo:
         return max(relevant_streams, key=lambda x: int(x[1]['tags'].get('NUMBER_OF_BYTES-eng', '0')))[0]
 
     video = _get_video_stream()
-    return transcode.VideoInfo(audio_index=_get_audio_stream()['index'], subtitle_index=_get_subtitle_stream_index(),
+    subtitle_index = None
+    try:
+        subtitle_index = _get_subtitle_stream_index()
+    except RuntimeError:
+        if not accept_no_subtitles:
+            raise
+    return transcode.VideoInfo(audio_index=_get_audio_stream()['index'], subtitle_index=subtitle_index,
                                width=video['width'], height=video['height'], fps=video['r_frame_rate'],
                                frames=int(video.get('tags', {}).get('NUMBER_OF_FRAMES') or video.get('tags', {}).get('NUMBER_OF_FRAMES-eng') or 0))
 
@@ -123,7 +130,7 @@ def parse_filename(input_path: str) -> TVShow | Movie:
     return Movie(name=input_name)
 
 
-def process_file(input_path: str) -> None:
+def process_file(input_path: str, accept_no_subtitles: bool = False) -> None:
     if not input_path.endswith('.mkv'):
         return
 
@@ -143,7 +150,7 @@ def process_file(input_path: str) -> None:
     proc = subprocess.run(['ffprobe', '-show_format', '-show_streams', '-of', 'json', input_path], text=True, capture_output=True, check=True,
                           encoding='utf-8')
     logging.info('ffprobe %s wrote %s, %s', str(proc.args), proc.stderr, proc.stdout)
-    video_info = parse_streams(json.loads(proc.stdout)['streams'])
+    video_info = parse_streams(json.loads(proc.stdout)['streams'], accept_no_subtitles=accept_no_subtitles)
 
     try:
         with lock_mutex(name=UPSCALE_MUTEX_NAME):
@@ -159,24 +166,25 @@ def process_file(input_path: str) -> None:
         raise
 
 
-def process_path(input_path: str) -> None:
+def process_path(input_path: str, accept_no_subtitles: bool = False) -> None:
     if os.path.isdir(input_path):
         for root, _, files in os.walk(input_path):
             for file in files:
                 try:
-                    process_file(input_path=os.path.join(root, file))
+                    process_file(input_path=os.path.join(root, file), accept_no_subtitles=accept_no_subtitles)
                 except Exception:
                     logging.exception('Failed to convert %s', input_path)
     else:
-        process_file(input_path=input_path)
+        process_file(input_path=input_path, accept_no_subtitles=accept_no_subtitles)
 
 
 def main(args: list[str]) -> int:
-    if len(args) != 1:
-        print('Usage: buganime.py <input_path>')
-        return 1
+    argparser = argparse.ArgumentParser(description='Convert anime files to 4K')
+    argparser.add_argument('input_path', type=str, help='Path to the input file or directory')
+    argparser.add_argument('--accept-no-subtitles', action='store_true', help='Accept files with no subtitles')
+    parsed = argparser.parse_args(args)
 
-    input_path = args[0]
+    input_path = parsed.input_path
     log_prefix = f'buganime_{os.path.basename(input_path)}_{datetime.datetime.now().strftime("%Y_%m_%d-%H_%M_%S")}'
     with tempfile.NamedTemporaryFile(mode='w', prefix=log_prefix, suffix='.txt', delete=False) as log_file:
         pass
@@ -194,7 +202,7 @@ def main(args: list[str]) -> int:
 
     logging.info('Buganime started running on %s', input_path)
     try:
-        process_path(input_path=input_path)
+        process_path(input_path=input_path, accept_no_subtitles=parsed.accept_no_subtitles)
         return 0
     except Exception:
         logging.exception('Failed to convert %s', input_path)
