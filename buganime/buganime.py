@@ -72,7 +72,8 @@ def parse_streams(streams: Any, accept_no_subtitles: bool = False) -> transcode.
         for i, stream in enumerate(subtitle_streams):
             match stream:
                 case {'tags': {'language': str() as lang}} if lang in ('en', 'eng'):
-                    if all(x not in stream['tags'].get('title', '').upper() for x in ('S&S', 'SIGNS', 'FORCED')) and \
+                    if (all(x not in stream['tags'].get('title', '').upper() for x in ('S&S', 'SIGNS', 'FORCED')) or
+                        ('DIALOGUE' in stream['tags'].get('title', '').upper())) and \
                        stream['codec_name'].lower() in SUPPORTED_SUBTITLE_CODECS:
                         relevant_streams.append((i, stream))
         if not relevant_streams:
