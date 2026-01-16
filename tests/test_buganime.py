@@ -84,6 +84,9 @@ NAME_CONVERSIONS = [
     (r'C:\Tohai.-.Ura.Rate.Mahjong.Tohai.Roku.S01E01.1080p.AMZN.WEB-DL.DDP2.0.H.264-Emmid'
         r'\Tohai.-.Ura.Rate.Mahjong.Tohai.Roku.S01E01.1080p.AMZN.WEB-DL.DDP2.0.H.264-Emmid.mkv',
      buganime.TVShow(name='Tohai Ura Rate Mahjong Tohai Roku', season=1, episode=1)),
+
+    (r'C:\Temp\Torrents\Elegy.for.the.Henchmen.Fist.of.the.North.Star.S01E01.1080p.AMZN.WEB-DL.JPN.DDP2.0.H.264.ESub-ToonsHub.mkv',
+     buganime.TVShow(name='Elegy for the Henchmen Fist of the North Star', season=1, episode=1)),
 ]
 
 
