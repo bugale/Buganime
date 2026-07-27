@@ -14,7 +14,7 @@ jobs:
       - name: yamllint
         run: yamllint --strict -f parsable . > lint.txt
       - name: Convert
-        uses: bugale/bugalint@v2
+        uses: bugale/bugalint@v4
         if: always()
         with:
           inputFile: 'lint.txt'

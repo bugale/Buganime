@@ -20,7 +20,7 @@ jobs:
           output: 'lint.txt'
           config: '.mdl.yml'
       - name: Convert
-        uses: bugale/bugalint@v2
+        uses: bugale/bugalint@v4
         if: always()
         with:
           inputFile: 'lint.txt'

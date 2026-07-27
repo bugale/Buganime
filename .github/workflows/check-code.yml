@@ -27,7 +27,7 @@ jobs:
       - name: Lint
         run: cd ${{ matrix.linter.cwd }}; ${{ matrix.linter.cmd }} > lint.log
       - name: Convert
-        uses: bugale/bugalint@v2
+        uses: bugale/bugalint@v4
         if: always()
         with:
           inputFile: 'lint.log'
